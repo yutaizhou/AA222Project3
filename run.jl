@@ -4,11 +4,13 @@ using LinearAlgebra
 using Plots
 using DrWatson
 using Dates
+using DataFrames, CSV
 
 time_now = Dates.format(now(), "Y-mm-dd-HH:MM:SS")
 outputdir(args...) = projectdir("output", args...)
 outputdir_subpath = outputdir(time_now)
 mkdir(outputdir_subpath)
+obj_values = []
 
 # Matrices for differencing and adding two consecutive elements of a vector
 D = zeros(30,31)
@@ -80,21 +82,23 @@ for (c_fn, c_name) in zip(constraint_fns, constraint_names)
     c_fn(model)
     optimize!(model)
 
-    obj_value = objective_value(model)
+    push!(obj_values, objective_value(model))
     output = value.(Z)
 
     push!(plots,
         plot([x, x],[output,-output],
             xlabel="x", ylabel="z", legend=false,
             ylims=[-0.2, 0.2],
-            title=c_name, titlefontsize=10
+            title=c_name, titlefontsize=10,
+            grid = true, gridalpha = 0.5, 
         )
     )
 
     if c_name == "Closed Body"
         plot([x, x],[output,-output],
             xlabel="x", ylabel="z", legend=false,
-            title=c_name, titlefontsize=10
+            title=c_name, titlefontsize=10,
+            grid = true, gridalpha = 0.5, 
         )
         savefig(outputdir(outputdir_subpath, "case1.png"))
     end
@@ -102,3 +106,7 @@ end
 
 plot(plots...)
 savefig(outputdir(outputdir_subpath, "all.png"))
+
+df = DataFrame(Constraints=constraint_names, Cd=obj_values)
+fout = outputdir(outputdir_subpath, "data.csv")
+CSV.write(fout, df)
