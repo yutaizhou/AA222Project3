@@ -69,7 +69,8 @@ constraint_fns = [add_constraint_case1, add_constraint_case2, add_constraint_cas
 constraint_names = ["Closed Body", "Closed Body + Min Thickness", "Closed Body + Fixed Area", "All Constraints"]
 x = range(-1,1,length=31)
 plots = []
-for (c_fn, c_name) in zip(constraint_fns, constraint_names)
+areas = []
+for (i,(c_fn, c_name)) in enumerate(zip(constraint_fns, constraint_names))
     model = Model(Ipopt.Optimizer)
     set_optimizer_attribute(model, "max_cpu_time", 60.0)
     set_optimizer_attribute(model, "print_level", 0)
@@ -82,14 +83,15 @@ for (c_fn, c_name) in zip(constraint_fns, constraint_names)
     c_fn(model)
     optimize!(model)
 
-    push!(obj_values, objective_value(model))
     output = value.(Z)
+    push!(obj_values, objective_value(model))
+    push!(areas, sum(A * output) * 2 / 30)
 
     push!(plots,
         plot([x, x],[output,-output],
             xlabel="x", ylabel="z", legend=false,
             ylims=[-0.2, 0.2],
-            title=c_name, titlefontsize=10,
+            title="Case $i: $c_name", titlefontsize=8,
             grid = true, gridalpha = 0.5, 
         )
     )
@@ -97,7 +99,7 @@ for (c_fn, c_name) in zip(constraint_fns, constraint_names)
     if c_name == "Closed Body"
         plot([x, x],[output,-output],
             xlabel="x", ylabel="z", legend=false,
-            title=c_name, titlefontsize=10,
+            title="Case $i: $c_name", titlefontsize=8,
             grid = true, gridalpha = 0.5, 
         )
         savefig(outputdir(outputdir_subpath, "case1.png"))
@@ -107,6 +109,6 @@ end
 plot(plots...)
 savefig(outputdir(outputdir_subpath, "all.png"))
 
-df = DataFrame(Constraints=constraint_names, Cd=obj_values)
+df = DataFrame(Constraints=constraint_names, Cd=obj_values, Areas = areas)
 fout = outputdir(outputdir_subpath, "data.csv")
 CSV.write(fout, df)
